@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Executive Task Suite</title>
+    <style>
+        /* =========================================
+           グローバル・デザインシステム (Light / Dark Mode対応)
+        ========================================= */
+        :root {
+            --bg-body: #F8FAFC;
+            --bg-surface: #FFFFFF;
+            --bg-subtle: #F1F5F9;
+            --bg-header: #FAFAFA;
+            
+            --text-main: #0F172A;
+            --text-sub: #475569;
+            --text-muted: #94A3B8;
+            
+            --border: #E2E8F0;
+            --border-light: #F8FAFC;
+            
+            --primary: #0F172A;
+            --accent: #2563EB;
+            --trip-brand: #4F46E5;
+            
+            --status-ok: #059669;
+            --status-warn: #D97706;
+            --status-err: #DC2626;
+
+            --p4-color: #DC2626;
+            --p3-color: #D97706;
+            --p2-color: #0284C7;
+            --p1-color: #64748B;
+
+            --radius-lg: 14px;
+            --radius-md: 8px;
+            --radius-sm: 6px;
+            
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+            --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.15);
+        }
+
+        body.dark-mode {
+            --bg-body: #0F172A;
+            --bg-surface: #1E293B;
+            --bg-subtle: #334155;
+            --bg-header: #1E293B;
+            --text-main: #F8FAFC;
+            --text-sub: #CBD5E1;
+            --text-muted: #94A3B8;
+            --border: #334155;
+            --border-light: #1E293B;
+            --primary: #F8FAFC;
+            --accent: #3B82F6;
+            --trip-brand: #6366F1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body, html {
+            height: 100%; height: 100dvh; 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            background-color: var(--bg-body); color: var(--text-main);
+            overflow: hidden; display: flex; flex-direction: column;
+            -webkit-font-smoothing: antialiased; font-size: 13px;
+        }
+
+        .view-container { flex: 1; overflow: hidden; display: none; flex-direction: column; min-height: 0; }
+        .view-container.active { display: flex; animation: fade 0.15s forwards; }
+        @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* =========================================
+           共通ペイン・UIパーツ
+        ========================================= */
+        .dashboard-layout { 
+            display: flex; flex-direction: column; flex: 1; min-height: 0;
+            padding: 8px; gap: 8px; 
+        }
+
+        .pane {
+            background: var(--bg-surface); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm); display: flex; flex-direction: column;
+            border: 1px solid var(--border); overflow: hidden; min-height: 0;
+        }
+
+        .pane-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; border-bottom: 1px solid var(--border);
+            background: var(--bg-header); flex-shrink: 0; height: 42px;
+        }
+        .pane-header h2 { font-size: 13px; font-weight: 800; display: flex; align-items: center; color: var(--text-main); }
+        
+        .nav-btn {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            width: 28px; height: 28px; cursor: pointer; color: var(--text-sub); 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .icon { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+
+        .filter-group { display: flex; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 2px;}
+        .filter-btn { background: transparent; border: none; padding: 4px 8px; font-size: 11px; font-weight: 700; color: var(--text-sub); cursor: pointer; border-radius: 4px;}
+        .filter-btn.active { background: var(--bg-surface); color: var(--text-main); box-shadow: var(--shadow-sm); }
+
+        /* =========================================
+           タブ1: カレンダー＆タスク一覧
+        ========================================= */
+        .cal-pane { flex: 0 0 60%; height: 60%; display: flex; flex-direction: column; } 
+        .list-pane { flex: 0 0 calc(40% - 8px); height: calc(40% - 8px); display: flex; flex-direction: column; }
+        
+        @media (min-width: 768px) {
+            .dashboard-layout { flex-direction: row; }
+            .cal-pane { flex: 0 0 65%; height: 100%; } 
+            .list-pane { flex: 1; height: 100%; }
+        }
+
+        .cal-grid { 
+            flex: 1; display: grid; background: var(--border); gap: 1px; 
+            grid-template-columns: repeat(7, minmax(0, 1fr)); 
+            grid-template-rows: 22px repeat(6, minmax(0, 1fr)); 
+            overflow: hidden; height: 100%;
+        }
+        
+        .day-head { 
+            background: var(--bg-header); font-size: 10px; font-weight: 800; text-align: center; 
+            display: flex; align-items: center; justify-content: center; color: var(--text-sub); 
+        }
+        .day-head:first-child { color: var(--status-err); } 
+        .day-head:last-child { color: var(--accent); }     
+
+        .day-cell { 
+            background: var(--bg-surface); padding: 2px 4px; display: flex; flex-direction: column; 
+            overflow: hidden; position: relative; cursor: pointer; min-height: 0;
+        }
+        .day-cell.past { background: var(--bg-subtle); opacity: 0.6; }
+        .day-cell.today { background: rgba(37, 99, 235, 0.05); }
+        .day-cell.today::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+        
+        .cell-header { display: flex; margin-bottom: 2px; flex-shrink: 0; }
+        .date-num { font-size: 10px; font-weight: 700; color: var(--text-muted); line-height: 1; }
+        .day-cell.sun .date-num { color: rgba(220, 38, 38, 0.85); font-weight: 800; }
+        .day-cell.sat .date-num { color: rgba(37, 99, 235, 0.85); font-weight: 800; }
+        .day-cell.today .date-num { color: #FFFFFF; font-weight: 900; background: var(--accent); padding: 1px 4px; border-radius: 3px; font-size: 9px; }
+        
+        .cell-tasks { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-height: 0; }
+        
+        .cal-task { 
+            font-size: 9px; font-weight: 700; padding: 2px 4px; border-radius: 3px; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1;
+            border-left: 2.5px solid; width: 100%; box-sizing: border-box;
+        }
+        .cal-task.u-alert { background: #FEE2E2; color: #991B1B; border-left-color: #DC2626; }
+        body.dark-mode .cal-task.u-alert { background: rgba(220, 38, 38, 0.3); color: #FCA5A5; border-left-color: #EF4444; }
+        .cal-task.u-warn { background: #FEF3C7; color: #92400E; border-left-color: #D97706; }
+        body.dark-mode .cal-task.u-warn { background: rgba(217, 119, 6, 0.3); color: #FCD34D; border-left-color: #F59E0B; }
+        .cal-task.u-safe { background: #DBEAFE; color: #1E40AF; border-left-color: #2563EB; }
+        body.dark-mode .cal-task.u-safe { background: rgba(37, 99, 235, 0.3); color: #93C5FD; border-left-color: #3B82F6; }
+
+        .list-scroll-area { flex: 1; overflow-y: auto; padding: 6px 8px; -ms-overflow-style: none; scrollbar-width: none; }
+        .list-scroll-area::-webkit-scrollbar { display: none; }
+
+        .task-card { 
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); 
+            padding: 8px 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; 
+            box-shadow: var(--shadow-sm); flex-shrink: 0;
+        }
+        .check-btn { 
+            width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--text-muted); 
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
+        }
+        .check-btn.checked { background: var(--text-main); border-color: var(--text-main); }
+        .check-btn.checked::after { content: "✓"; color: var(--bg-surface); font-weight: bold; font-size: 11px; }
+
+        .task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;}
+        .task-title { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .task-meta { font-size: 9.5px; color: var(--text-sub); display: flex; align-items: center; justify-content: space-between;}
+        
+        .p-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;}
+        .p-dot.p4 { background: var(--p4-color); box-shadow: 0 0 4px var(--p4-color); } .p-dot.p3 { background: var(--p3-color); } .p-dot.p2 { background: var(--p2-color); } .p-dot.p1 { background: var(--p1-color); }
+        .cat-badge { font-size: 8.5px; padding: 1px 4px; border-radius: 3px; background: var(--bg-subtle); color: var(--text-main); font-weight: 700;}
+
+        /* =========================================
+           タブ2: 4分割マトリクス
+        ========================================= */
+        .matrix-layout { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; padding: 8px; height: 100%; min-height: 0;}
+        .quadrant { background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+        
+        .quad-header { padding: 6px 8px; font-size: 10.5px; font-weight: 800; border-bottom: 1px solid var(--border); color: var(--text-main); background: var(--bg-header); display: flex; align-items: center; gap: 5px; flex-shrink: 0;}
+        .quad-header::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;}
+        .quad-1 .quad-header::before { background: var(--p4-color); } .quad-2 .quad-header::before { background: var(--p3-color); }
+        .quad-3 .quad-header::before { background: var(--p2-color); } .quad-4 .quad-header::before { background: var(--p1-color); }
+
+        .quad-body { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; background: var(--bg-subtle); min-height: 0;}
+        .quad-body::-webkit-scrollbar { display: none; }
+        
+        .mini-card { 
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); 
+            padding: 6px; display: flex; align-items: flex-start; gap: 6px; flex-shrink: 0; box-shadow: var(--shadow-sm);
+        }
+        .mini-check { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;}
+        .mini-check.checked { background: var(--text-main); border-color: var(--text-main); }
+        .mini-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;}
+        .mini-title { font-size: 10.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); line-height: 1.2;}
+        .mini-date { font-size: 9px; font-weight: 700; display: inline-block; padding: 1px 4px; border-radius: 3px; background: var(--bg-subtle); align-self: flex-start;}
+
+        /* =========================================
+           タブ3＆4: タイムライン・パッキング
+        ========================================= */
+        .btn-outline { background: var(--bg-surface); border: 1px solid var(--border); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; color: var(--text-main);}
+        
+        .trip-tabs-wrapper { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); background: var(--bg-header); flex-shrink: 0;}
+        .trip-scroll-row { display: flex; overflow-x: auto; padding: 8px; gap: 6px; -ms-overflow-style: none; scrollbar-width: none; }
+        .trip-scroll-row::-webkit-scrollbar { display: none; }
+        
+        .trip-pill { padding: 5px 10px; background: var(--bg-surface); border-radius: 12px; font-size: 10.5px; font-weight: 700; white-space: nowrap; color: var(--text-sub); border: 1px solid var(--border); cursor: pointer; }
+        .trip-pill.active-proj { background: var(--primary); color: var(--bg-surface); border-color: var(--primary); }
+        .trip-pill.active-date { border-radius: 0; border: none; border-bottom: 2px solid var(--trip-brand); background: transparent; color: var(--trip-brand); font-weight: 800; padding: 4px 4px;}
+        
+        .gantt-outer { 
+            flex: 1; overflow: hidden; margin: 8px; background: var(--bg-surface); 
+            border: 1px solid var(--border); border-radius: var(--radius-md); 
+            display: flex; flex-direction: column; min-height: 0; 
+        }
+        .gantt-container-wrapper {
+            display: flex; flex: 1; overflow: hidden; min-height: 0; position: relative;
+        }
+        .gantt-fixed-column {
+            width: 110px; flex-shrink: 0; display: flex; flex-direction: column;
+            background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 10;
+        }
+        .gantt-fixed-head {
+            height: 33px; background: var(--bg-header); border-bottom: 1px solid var(--border);
+            font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 6px;
+        }
+        .gantt-fixed-body {
+            flex: 1; overflow-y: auto; overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .gantt-fixed-body::-webkit-scrollbar { display: none; }
+        .gantt-fixed-row {
+            height: 38px; padding: 0 8px; border-bottom: 1px dashed var(--border);
+            display: flex; flex-direction: column; justify-content: center; min-width: 0; cursor: pointer;
+        }
+
+        .gantt-scrollable-area {
+            flex: 1; overflow-x: auto; overflow-y: auto; display: flex; flex-direction: column; min-height: 0;
+        }
+        .gantt-inner { min-width: 800px; flex: 1; display: flex; flex-direction: column; min-height: 0;}
+        .gantt-head { display: flex; background: var(--bg-header); flex-shrink: 0; height: 33px; border-bottom: 1px solid var(--border); }
+        .gantt-axis { flex: 1; display: flex; padding: 6px 0; }
+        
+        /* 左右のマージンを少し増やして、端の文字が切れないようにする */
+        .gantt-track-inner { position: relative; margin: 0 16px; flex: 1; }
+        
+        /* width: 0 と justify-content: center で中央から両側に広がるように修正 */
+        .gantt-tick { font-size: 9px; font-weight: 800; color: var(--text-muted); position: relative; width: 0; display: flex; justify-content: center; overflow: visible; white-space: nowrap; }
+        
+        .gantt-lines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
+        .gantt-line { position: absolute; top: 0; bottom: 0; width: 1px; background-color: var(--border); opacity: 0.5; }
+        .gantt-body { display: flex; flex-direction: column; position: relative; flex: 1; padding: 0; z-index: 1;}
+        .gantt-row { display: flex; position: relative; height: 38px; align-items: center; border-bottom: 1px dashed var(--border); z-index: 1;}
+        .gantt-row-track { flex: 1; position: relative; height: 100%; cursor: pointer;}
+        .gantt-bar { position: absolute; top: 6px; bottom: 6px; background: linear-gradient(135deg, var(--trip-brand), #3730A3); border-radius: 4px; display: flex; align-items: center; gap: 4px; padding: 0 6px; color: #FFFFFF; font-size: 10px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
+
+        .packing-container { padding: 10px; flex: 1; overflow-y: auto; padding-bottom: 80px;}
+        .pack-summary-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .pack-progress-bar { height: 6px; background: var(--bg-subtle); border-radius: 3px; overflow: hidden; width: 120px; margin-top: 4px;}
+        .pack-progress-fill { height: 100%; background: var(--status-ok); }
+        .pack-group { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 10px; overflow: hidden; }
+        .pack-group-header { background: var(--bg-header); border-bottom: 1px solid var(--border); padding: 6px 10px; font-size: 11px; font-weight: 800; display: flex; align-items: center;}
+        .pack-input-wrapper { padding: 6px 8px; border-bottom: 1px solid var(--border-light); display: flex; gap: 6px;}
+        .pack-input { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; outline: none; min-width: 0; background: var(--bg-surface); color: var(--text-main);}
+        .pack-add-btn { background: var(--text-main); color: var(--bg-surface); border: none; padding: 0 10px; border-radius: var(--radius-sm); font-weight: 800; font-size: 11px;}
+        .pack-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border-light); }
+        .pack-item.checked .pack-name { text-decoration: line-through; color: var(--text-muted); }
+        .pack-name { flex: 1; font-size: 11.5px; font-weight: 600; color: var(--text-main); }
+        .pack-del { color: var(--status-err); font-size: 16px; border: none; background: none; font-weight: bold; width: 20px; height: 20px; display:flex; align-items:center; justify-content:center;}
+
+        /* =========================================
+           ボトム・ナビ & FAB
+        ========================================= */
+        .bottom-nav {
+            background: #0F172A; border-top: 1px solid rgba(255,255,255,0.05); 
+            display: flex; justify-content: space-around;
+            padding: 6px 8px 20px 8px; height: 60px; flex-shrink: 0; z-index: 50;
+        }
+        .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748B; font-size: 9.5px; font-weight: 700; gap: 2px;}
+        .nav-tab.active { color: #FFFFFF;}
+        .nav-tab.active-trip { color: #818CF8;} 
+        
+        .fab {
+            position: absolute; bottom: 74px; right: 14px; width: 48px; height: 48px;
+            border-radius: 24px; background: var(--text-main); color: var(--bg-surface);
+            border: none; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; 
+        }
+        .fab.fab-trip { background: var(--trip-brand); color: #FFFFFF;}
+        .fab .icon { width: 20px; height: 20px; }
+
+        /* =========================================
+           モーダル系
+        ========================================= */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5);
+            z-index: 100; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: 0.15s ease; padding: 12px;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .modal-content {
+            background: var(--bg-surface); width: 100%; max-width: 360px; 
+            border-radius: var(--radius-lg); padding: 16px;
+            transform: translateY(10px); transition: 0.2s; box-shadow: var(--shadow-lg); 
+            box-sizing: border-box; max-height: 90vh; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .modal-content::-webkit-scrollbar { display: none; }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        
+        .m-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 800; font-size: 14px;}
+        .btn-close { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; font-size: 18px; border: none;}
+        
+        .input-group { margin-bottom: 12px; width: 100%; min-width: 0;}
+        .input-group label { font-size: 10.5px; color: var(--text-sub); display: block; margin-bottom: 4px; font-weight: 800;}
+        .input-hint { font-size: 9.5px; color: var(--text-muted); margin-bottom: 4px; display: block;}
+        
+        .seg-group { display: flex; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); width: 100%; padding: 2px;}
+        .seg-group input { display: none; }
+        .seg-label { flex: 1; text-align: center; padding: 6px; font-size: 11.5px; font-weight: 800; color: var(--text-sub); border-radius: 3px;}
+        .seg-group input:checked + .seg-label { background: var(--bg-surface); color: var(--text-main); box-shadow: var(--shadow-sm);}
+
+        .form-ctrl {
+            display: block; width: 100%; max-width: 100%; min-width: 0; 
+            padding: 8px 10px; border: 1px solid var(--border);
+            border-radius: var(--radius-sm); font-size: 13px; outline: none; background: var(--bg-header); color: var(--text-main);
+            box-sizing: border-box; appearance: none; -webkit-appearance: none;
+        }
+        
+        .grid-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; width: 100%; }
+        .btn-row { display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); justify-content: flex-end;}
+        
+        .btn { padding: 10px 14px; border: 1px solid transparent; border-radius: var(--radius-md); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px;}
+        .btn-primary { background: var(--text-main); color: var(--bg-surface); }
+        .btn-trip { background: linear-gradient(135deg, var(--trip-brand), #3730A3); color: white; }
+        .btn-cancel { background: var(--bg-surface); color: var(--text-sub); border-color: var(--border); }
+        .btn-danger { background: rgba(220, 38, 38, 0.1); color: var(--status-err); border: none; margin-right: auto;}
+
+        /* レンジピッカー カレンダー */
+        .rc-wrapper { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-surface); margin-top: 4px;}
+        .rc-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: var(--bg-header); border-bottom: 1px solid var(--border); }
+        .rc-header button { width: 24px; height: 24px; border: none; background: transparent; font-weight: bold; font-size: 16px; }
+        .rc-header span { font-size: 11.5px; font-weight: 800;}
+        .rc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); }
+        .rc-day-head { background: var(--bg-header); font-size: 9.5px; font-weight: bold; text-align: center; padding: 4px 0; color: var(--text-sub);}
+        .rc-cell { background: var(--bg-surface); text-align: center; padding: 6px 0; font-size: 11.5px; font-weight: 700;}
+        .rc-cell.past-month { color: var(--text-muted); opacity: 0.3; }
+        .rc-cell.in-range { background: rgba(79, 70, 229, 0.1); color: var(--trip-brand); }
+        .rc-cell.selected { background: var(--trip-brand); color: white; }
+        .rc-help { font-size: 10px; color: var(--trip-brand); margin-bottom: 4px; text-align: center; font-weight: 800;}
+    </style>
+</head>
+<body class="light-mode">
+
+    <datalist id="history-tasks"></datalist>
+    <datalist id="history-projs"></datalist>
+    <datalist id="history-scheds"></datalist>
+    <datalist id="history-items"></datalist>
+
+    <!-- ＝ タブ1： カレンダー＆タスク一覧 ＝ -->
+    <div id="tab-dash" class="view-container active">
+        <div class="dashboard-layout">
+            <!-- 上部：全体カレンダー -->
+            <div class="pane cal-pane">
+                <div class="pane-header">
+                    <h2 id="monthTitle">2026.08</h2>
+                    <div style="display:flex; gap:4px;">
+                        <button class="nav-btn" onclick="openSettings()" title="設定"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                        <button class="nav-btn" onclick="changeMonth(-1)" title="前月"><svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+                        <button class="nav-btn" onclick="changeMonth(1)" title="翌月"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+                    </div>
+                </div>
+
+                <div class="cal-grid" id="calGrid">
+                    <div class="day-head">日</div><div class="day-head">月</div><div class="day-head">火</div><div class="day-head">水</div><div class="day-head">木</div><div class="day-head">金</div><div class="day-head">土</div>
+                </div>
+            </div>
+
+            <!-- 下部：進行中のタスク一覧 -->
+            <div class="pane list-pane">
+                <div class="pane-header">
+                    <h2>タスク一覧</h2>
+                    <div class="filter-group">
+                        <button class="filter-btn active" id="filter-all" onclick="setTaskFilter('all')">すべて</button>
+                        <button class="filter-btn" id="filter-business" onclick="setTaskFilter('business')">業 務</button>
+                        <button class="filter-btn" id="filter-private" onclick="setTaskFilter('private')">個 人</button>
+                    </div>
+                </div>
+                <div class="list-scroll-area" id="taskList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ＝ タブ2： 4分割マトリクス ＝ -->
+    <div id="tab-matrix" class="view-container">
+        <div style="padding: 8px 8px 0 8px; display:flex; justify-content:flex-end;">
+            <div class="filter-group">
+                <button class="filter-btn active" id="m-filter-all" onclick="setTaskFilter('all')">すべて</button>
+                <button class="filter-btn" id="m-filter-business" onclick="setTaskFilter('business')">業 務</button>
+                <button class="filter-btn" id="m-filter-private" onclick="setTaskFilter('private')">個 人</button>
+            </div>
+        </div>
+        <div class="matrix-layout">
+            <div class="quadrant quad-1" onclick="handleQuadClick(event, 4)">
+                <div class="quad-header">第1象限：緊急かつ重要</div><div class="quad-body" id="quad4"></div>
+            </div>
+            <div class="quadrant quad-2" onclick="handleQuadClick(event, 3)">
+                <div class="quad-header">第2象限：重要（非緊急）</div><div class="quad-body" id="quad3"></div>
+            </div>
+            <div class="quadrant quad-3" onclick="handleQuadClick(event, 2)">
+                <div class="quad-header">第3象限：緊急（非重要）</div><div class="quad-body" id="quad2"></div>
+            </div>
+            <div class="quadrant quad-4" onclick="handleQuadClick(event, 1)">
+                <div class="quad-header">第4象限：待機タスク</div><div class="quad-body" id="quad1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ＝ タブ3： 出張タイムライン ＝ -->
+    <div id="tab-trip" class="view-container">
+        <div class="dashboard-layout">
+            <div class="pane" style="flex:1;">
+                <div class="pane-header">
+                    <h2 style="color:var(--trip-brand);">出張タイムライン</h2>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button class="btn-outline" onclick="exportExcel()">
+                            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            出力
+                        </button>
+                        <button class="nav-btn" onclick="openProjModal()">
+                            <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="trip-tabs-wrapper">
+                    <div class="trip-scroll-row" id="projListTabs"></div>
+                    <div class="trip-scroll-row" id="tripDateTabs" style="border-top: 1px solid var(--border);"></div>
+                </div>
+
+                <div class="gantt-outer">
+                    <div class="gantt-container-wrapper" id="ganttContainerWrapper">
+                        <!-- 左側固定カラム -->
+                        <div class="gantt-fixed-column" id="ganttFixedColumn">
+                            <div class="gantt-fixed-head">時間・行程</div>
+                            <div class="gantt-fixed-body" id="tripFixedBody"></div>
+                        </div>
+                        <!-- 右側スクロール領域 -->
+                        <div class="gantt-scrollable-area" id="tripScrollArea">
+                            <div class="gantt-inner" id="tripGantt"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ＝ タブ4： 持ち物と準備 (Packing) ＝ -->
+    <div id="tab-pack" class="view-container">
+        <div class="dashboard-layout">
+            <div class="pane" style="flex:1;">
+                <div class="pane-header">
+                    <h2 style="color:var(--trip-brand);">持ち物と準備</h2>
+                </div>
+                
+                <div class="trip-tabs-wrapper">
+                    <div class="trip-scroll-row" id="packProjListTabs"></div>
+                </div>
+
+                <div class="packing-container" id="packContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共通 FAB (タスク/行程追加) -->
+    <button id="mainFab" class="fab" onclick="handleFabClick()">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <!-- ボトムナビゲーション -->
+    <nav class="bottom-nav">
+        <div class="nav-tab active" onclick="switchTab('dash', this)">
+            <svg class="icon nav-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <div>カレンダー</div>
+        </div>
+        <div class="nav-tab" onclick="switchTab('matrix', this)">
+            <svg class="icon nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <div>マトリクス</div>
+        </div>
+        <div class="nav-tab" onclick="switchTab('trip', this)">
+            <svg class="icon nav-icon" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-.5-.5-2.5 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.2-1.1.6L3 8l6 5-3 3-3-1-2 2 5 2 2 5 2-2-1-3 3-3 5 6 1.2-.7c.4-.2.7-.6.6-1.1z"/></svg>
+            <div>タイムライン</div>
+        </div>
+        <div class="nav-tab" onclick="switchTab('pack', this)">
+            <svg class="icon nav-icon" viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M8 16h.01"/></svg>
+            <div>パッキング</div>
+        </div>
+    </nav>
+
+    <!-- ===================================== -->
+    <!-- モーダル群 -->
+    <!-- ===================================== -->
+
+    <!-- タスク追加・編集モーダル -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal-content">
+            <div class="m-header">
+                <span id="taskModalTitle">新規タスクの登録</span>
+                <button type="button" class="btn-close" onclick="closeModal('taskModal')">×</button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="t-id">
+                <div class="input-group"><label>タスク名（やること）</label><input type="text" id="t-name" class="form-ctrl" required placeholder="例: 仕様書レビュー、部品発注" list="history-tasks" autocomplete="off"></div>
+                <div class="input-group"><label>期日</label><input type="date" id="t-dead" class="form-ctrl" required></div>
+                <div class="input-group">
+                    <label>区分</label>
+                    <div class="seg-group">
+                        <input type="radio" id="cat-biz" name="t-cat" value="business" checked>
+                        <label for="cat-biz" class="seg-label">業 務</label>
+                        <input type="radio" id="cat-priv" name="t-cat" value="private">
+                        <label for="cat-priv" class="seg-label">個 人</label>
+                    </div>
+                </div>
+                <div class="grid-row">
+                    <div class="input-group" style="margin-bottom:0;"><label>優先度</label><select id="t-pri" class="form-ctrl"><option value="4">第1象限 (緊急・重要)</option><option value="3">第2象限 (重要)</option><option value="2" selected>第3象限 (緊急)</option><option value="1">第4象限 (待機)</option></select></div>
+                    <div class="input-group" style="margin-bottom:0;"><label>工数 (h)</label><input type="number" id="t-hours" class="form-ctrl" min="0.5" step="0.5" required value="1.0"></div>
+                </div>
+                <div class="btn-row">
+                    <button type="button" id="btnDeleteTask" class="btn btn-danger" style="display:none;" onclick="deleteTask()">削 除</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('taskModal')">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 出張プロジェクト登録モーダル -->
+    <div class="modal-overlay" id="projModal">
+        <div class="modal-content">
+            <div class="m-header">
+                <span id="projModalTitle" style="color:var(--trip-brand);">新規出張の登録</span>
+                <button type="button" class="btn-close" onclick="closeModal('projModal')">×</button>
+            </div>
+            <form id="projForm">
+                <input type="hidden" id="p-id">
+                <div class="input-group">
+                    <label>出張プロジェクト名</label>
+                    <input type="text" id="p-name" class="form-ctrl" required placeholder="例: 名古屋・東京 設備立会" list="history-projs" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>出張期間 <span style="font-weight:normal; color:var(--text-muted);">(開始日と終了日を選択)</span></label>
+                    <div class="rc-help" id="rc-help-text">開始日を選択してください</div>
+                    <div class="rc-wrapper">
+                        <div class="rc-header">
+                            <button type="button" onclick="changeRcMonth(-1)">‹</button>
+                            <span id="rc-month">2026.08</span>
+                            <button type="button" onclick="changeRcMonth(1)">›</button>
+                        </div>
+                        <div class="rc-grid" id="rc-grid"></div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="button" id="btnDeleteProj" class="btn btn-danger" style="display:none;" onclick="deleteProj()">削 除</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('projModal')">キャンセル</button>
+                    <button type="submit" class="btn btn-trip">プロジェクト作成</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 行程登録モーダル -->
+    <div class="modal-overlay" id="schedModal">
+        <div class="modal-content">
+            <div class="m-header">
+                <span id="schedModalTitle" style="color:var(--trip-brand);">行程の追加</span>
+                <button type="button" class="btn-close" onclick="closeModal('schedModal')">×</button>
+            </div>
+            <form id="schedForm">
+                <input type="hidden" id="s-id">
+                <div class="input-group">
+                    <label>行程内容</label>
+                    <input type="text" id="s-name" class="form-ctrl" required placeholder="例: 新幹線 のぞみ号、工場監査" list="history-scheds" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>対象日</label>
+                    <input type="date" id="s-date" class="form-ctrl" required>
+                </div>
+                <div class="grid-row">
+                    <div class="input-group" style="margin-bottom:0;"><label>開始時刻</label><input type="time" id="s-start" class="form-ctrl" required value="09:00"></div>
+                    <div class="input-group" style="margin-bottom:0;"><label>終了時刻</label><input type="time" id="s-end" class="form-ctrl" required value="10:30"></div>
+                </div>
+                <div class="grid-row" style="margin-top:10px;">
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>座席番号 (任意)</label>
+                        <input type="text" id="s-seat" class="form-ctrl" placeholder="例: 15A" autocomplete="off">
+                    </div>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>宿泊先 (任意)</label>
+                        <input type="text" id="s-hotel" class="form-ctrl" placeholder="例: 第一ホテル" autocomplete="off">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom:0; border-top:1px solid var(--border-light); padding-top:12px; margin-top:12px;">
+                    <label>必要な準備物 <span style="color:var(--text-muted); font-weight:normal;">(パッキングに連動)</span></label>
+                    <span class="input-hint">カンマ (,) 区切りで複数登録できます</span>
+                    <input type="text" id="s-items" class="form-ctrl" placeholder="例: ノートPC, 名刺, 作業着" autocomplete="off">
+                </div>
+
+                <div class="btn-row">
+                    <button type="button" id="btnDeleteSched" class="btn btn-danger" style="display:none;" onclick="deleteSched()">削 除</button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('schedModal')">キャンセル</button>
+                    <button type="submit" class="btn btn-trip">行程を追加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- システム設定モーダル -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="m-header">
+                <span>システム設定</span>
+                <button type="button" class="btn-close" onclick="closeModal('settingsModal')">×</button>
+            </div>
+            
+            <div class="input-group" style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px;">
+                <label>外観・テーマ</label>
+                <button type="button" class="btn-outline" style="width:100%; justify-content:center;" onclick="toggleDarkMode()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    ダークモードの切替
+                </button>
+            </div>
+
+            <div class="input-group" style="margin-top: 12px;">
+                <label>データ保存・バックアップ</label>
+                <span class="input-hint">登録した全タスク・出張データをファイルに保存・読込します。</span>
+                <div style="display:flex; gap:8px; margin-top: 6px;">
+                    <button type="button" class="btn-primary" style="flex:1;" onclick="exportBackupData()">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        書き出し
+                    </button>
+                    <label class="btn-cancel btn" style="flex:1; margin:0; cursor:pointer;">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        読み込み
+                        <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importBackupData(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button type="button" class="btn btn-cancel" style="width:100%;" onclick="closeModal('settingsModal')">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================
+        // データ管理
+        // =========================================
+        const KEY_TASKS = 'exec_tasks_v9';
+        const KEY_PROJS = 'exec_projs_v9';
+        const KEY_SCHEDS = 'exec_scheds_v9';
+        const KEY_ITEMS = 'exec_items_v9'; 
+        const KEY_HISTORY = 'exec_history_v9'; 
+        const KEY_THEME = 'exec_theme'; 
+        
+        let tasks = []; let tripProjs = []; let tripScheds = []; let tripItems = [];
+        let historyData = { tasks: [], projs: [], scheds: [], items: [] };
+        
+        let currentDate = new Date(); let currentTabId = 'dash'; let currentProjId = null; let currentTripDate = null;
+        let currentTaskFilter = 'all'; 
+        const DAILY_HOURS = 8;
+
+        function load() {
+            tasks = JSON.parse(localStorage.getItem(KEY_TASKS)) || [];
+            tripProjs = JSON.parse(localStorage.getItem(KEY_PROJS)) || [];
+            tripScheds = JSON.parse(localStorage.getItem(KEY_SCHEDS)) || [];
+            tripItems = JSON.parse(localStorage.getItem(KEY_ITEMS)) || [];
+            historyData = JSON.parse(localStorage.getItem(KEY_HISTORY)) || { tasks: [], projs: [], scheds: [], items: [] };
+            tasks.forEach(t => { if(!t.category) t.category = 'business'; });
+            
+            if(localStorage.getItem(KEY_THEME) === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.body.classList.remove('light-mode');
+            }
+            updateDataLists();
+        }
+        function saveTasks() { localStorage.setItem(KEY_TASKS, JSON.stringify(tasks)); }
+        function saveTrips() { 
+            localStorage.setItem(KEY_PROJS, JSON.stringify(tripProjs)); 
+            localStorage.setItem(KEY_SCHEDS, JSON.stringify(tripScheds)); 
+            localStorage.setItem(KEY_ITEMS, JSON.stringify(tripItems)); 
+        }
+        
+        function saveHistory(type, value) {
+            if(!value || value.trim() === '') return;
+            if(!historyData[type]) historyData[type] = [];
+            historyData[type] = historyData[type].filter(item => item !== value);
+            historyData[type].unshift(value);
+            if(historyData[type].length > 20) historyData[type].pop();
+            localStorage.setItem(KEY_HISTORY, JSON.stringify(historyData));
+            updateDataLists();
+        }
+        function updateDataLists() {
+            ['tasks', 'projs', 'scheds', 'items'].forEach(type => {
+                const listEl = document.getElementById(`history-${type}`);
+                if(listEl) {
+                    listEl.innerHTML = '';
+                    (historyData[type] || []).forEach(val => { const opt = document.createElement('option'); opt.value = val; listEl.appendChild(opt); });
+                }
+            });
+        }
+
+        function formatYMD(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function getDaysDiff(d1, d2) {
+            const date1 = new Date(d1); date1.setHours(0,0,0,0);
+            const date2 = new Date(d2); date2.setHours(0,0,0,0);
+            return Math.round((date2 - date1) / 86400000);
+        }
+
+        // =========================================
+        // 設定・バックアップ
+        // =========================================
+        function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem(KEY_THEME, document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        function exportBackupData() {
+            const data = { tasks, tripProjs, tripScheds, tripItems, historyData, version: '10.0' };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `タスクスイート_バックアップ_${formatYMD(new Date())}.json`; a.click();
+        }
+
+        function importBackupData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(confirm('現在のデータは上書きされます。よろしいですか？')) {
+                        if(data.tasks) localStorage.setItem(KEY_TASKS, JSON.stringify(data.tasks));
+                        if(data.tripProjs) localStorage.setItem(KEY_PROJS, JSON.stringify(data.tripProjs));
+                        if(data.tripScheds) localStorage.setItem(KEY_SCHEDS, JSON.stringify(data.tripScheds));
+                        if(data.tripItems) localStorage.setItem(KEY_ITEMS, JSON.stringify(data.tripItems));
+                        if(data.historyData) localStorage.setItem(KEY_HISTORY, JSON.stringify(data.historyData));
+                        alert('データの読み込みが完了しました。ページを再読み込みします。');
+                        location.reload();
+                    }
+                } catch(err) { alert('不正なファイル形式です。'); }
+            };
+            reader.readAsText(file);
+        }
+
+        // =========================================
+        // UI制御
+        // =========================================
+        function switchTab(tabId, el) {
+            currentTabId = tabId;
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.classList.remove('active-trip'); });
+            const fab = document.getElementById('mainFab');
+            
+            if(tabId === 'trip' || tabId === 'pack') {
+                el.classList.add('active-trip'); fab.classList.add('fab-trip'); 
+            } else {
+                el.classList.add('active'); fab.classList.remove('fab-trip');
+            }
+
+            if(tabId === 'pack') renderPackView();
+            if(tabId === 'trip') renderTripView();
+        }
+        
+        function handleFabClick() {
+            if(currentTabId === 'trip' || currentTabId === 'pack') {
+                if(currentProjId) openSchedModal(); else openProjModal();
+            } else {
+                openTaskModal();
+            }
+        }
+
+        function setTaskFilter(filter) {
+            currentTaskFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`filter-${filter}`).classList.add('active');
+            document.getElementById(`m-filter-${filter}`).classList.add('active');
+            refresh();
+        }
+        function getFilteredTasks() {
+            if(currentTaskFilter === 'all') return tasks;
+            return tasks.filter(t => t.category === currentTaskFilter);
+        }
+
+        function refresh() { 
+            renderCalendar(); 
+            renderList(); 
+            renderMatrix(); 
+            renderTripView(); 
+            if(currentTabId === 'pack') renderPackView(); 
+        }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+        // =========================================
+        // レンジピッカー
+        // =========================================
+        let rcCurrentDate = new Date(); let rcStart = null; let rcEnd = null;
+        function changeRcMonth(diff) { rcCurrentDate.setMonth(rcCurrentDate.getMonth() + diff); renderRangeCalendar(); }
+
+        function renderRangeCalendar() {
+            const grid = document.getElementById('rc-grid');
+            grid.innerHTML = '<div class="rc-day-head">日</div><div class="rc-day-head">月</div><div class="rc-day-head">火</div><div class="rc-day-head">水</div><div class="rc-day-head">木</div><div class="rc-day-head">金</div><div class="rc-day-head">土</div>';
+            
+            const y = rcCurrentDate.getFullYear(); const m = rcCurrentDate.getMonth();
+            document.getElementById('rc-month').textContent = `${y}.${String(m+1).padStart(2,'0')}`;
+            const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m + 1, 0).getDate();
+            
+            for (let i = 0; i < firstDay; i++) { const el = document.createElement('div'); el.className = 'rc-cell past-month'; grid.appendChild(el); }
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dStr = formatYMD(new Date(y, m, d)); const cell = document.createElement('div'); cell.className = 'rc-cell'; cell.textContent = d;
+                if (rcStart && dStr === rcStart) cell.classList.add('selected');
+                if (rcEnd && dStr === rcEnd) cell.classList.add('selected');
+                if (rcStart && rcEnd && dStr > rcStart && dStr < rcEnd) cell.classList.add('in-range');
+                cell.onclick = () => handleRcClick(dStr); grid.appendChild(cell);
+            }
+            
+            const help = document.getElementById('rc-help-text');
+            if(!rcStart) help.textContent = '開始日を選択してください';
+            else if(rcStart && !rcEnd) help.textContent = '終了日を選択してください（日帰りは同日をタップ）';
+            else help.textContent = `${rcStart.replace(/-/g,'/')} 〜 ${rcEnd.replace(/-/g,'/')}`;
+        }
+
+        function handleRcClick(dStr) {
+            if (!rcStart || (rcStart && rcEnd)) { rcStart = dStr; rcEnd = null; } 
+            else if (new Date(dStr) < new Date(rcStart)) { rcStart = dStr; } 
+            else { rcEnd = dStr; }
+            renderRangeCalendar();
+        }
+
+        // =========================================
+        // タスク系 (カレンダー/リスト/マトリクス)
+        // =========================================
+        function getUrgencyStatus(task) {
+            const daysLeft = getDaysDiff(new Date(), task.deadline);
+            if (daysLeft < 0) return { class: 'u-alert', label: '期限超過', color: 'var(--status-err)' };
+            if (daysLeft === 0) return { class: 'u-alert', label: '本日締切', color: 'var(--status-err)' };
+            if (daysLeft === 1) return { class: 'u-warn', label: '明日締切', color: 'var(--status-warn)' };
+            if (daysLeft <= 3) return { class: 'u-warn', label: `残${daysLeft}日`, color: 'var(--status-warn)' };
+            return { class: 'u-safe', label: `残${daysLeft}日`, color: 'var(--accent)' };
+        }
+
+        function createSchedule() {
+            const map = {}; const targetTasks = getFilteredTasks();
+            if (!targetTasks.length) return map;
+            let pending = targetTasks.map(t => ({ ...t, rem: Number(t.hours) }));
+            let loopDate = new Date(); loopDate.setHours(0,0,0,0);
+
+            for (let i = 0; i < 90; i++) {
+                let dailyCap = DAILY_HOURS;
+                const dStr = formatYMD(loopDate);
+                pending.forEach(t => {
+                    if(t.rem <= 0) { t.score = -1; return; }
+                    const dLeft = Math.max(1, getDaysDiff(loopDate, t.deadline));
+                    t.score = (t.priority * 20) + ((t.rem / dLeft) * 30);
+                    if(getDaysDiff(loopDate, t.deadline) < 0) t.score += 1000;
+                });
+                pending.sort((a, b) => b.score - a.score);
+                for (let t of pending) {
+                    if (t.rem <= 0 || dailyCap <= 0) continue;
+                    const assign = Math.min(t.rem, dailyCap);
+                    t.rem -= assign; dailyCap -= assign;
+                    if (!map[dStr]) map[dStr] = [];
+                    map[dStr].push({ ...t, assigned: assign });
+                }
+                if (pending.every(t => t.rem <= 0)) break;
+                loopDate.setDate(loopDate.getDate() + 1);
+            }
+            return map;
+        }
+
+        function changeMonth(diff) { currentDate.setMonth(currentDate.getMonth() + diff); refresh(); }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calGrid');
+            Array.from(grid.children).forEach(c => { if(!c.classList.contains('day-head')) c.remove(); });
+            const y = currentDate.getFullYear(); const m = String(currentDate.getMonth()+1).padStart(2,'0');
+            document.getElementById('monthTitle').textContent = `${y}.${m}`;
+            const sched = createSchedule();
+            const firstDay = new Date(y, currentDate.getMonth(), 1).getDay();
+            const daysInMonth = new Date(y, currentDate.getMonth() + 1, 0).getDate();
+            const todayStr = formatYMD(new Date());
+            
+            for (let i = 0; i < firstDay; i++) { 
+                const el = document.createElement('div'); 
+                el.className = 'day-cell past'; 
+                grid.appendChild(el); 
+            }
+            
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(y, currentDate.getMonth(), d);
+                const dStr = formatYMD(dateObj);
+                const dayOfWeek = dateObj.getDay();
+                const cell = document.createElement('div');
+                cell.className = 'day-cell';
+                if (dayOfWeek === 0) cell.classList.add('sun');
+                if (dayOfWeek === 6) cell.classList.add('sat');
+                if (dStr === todayStr) cell.classList.add('today');
+                else if (dateObj < new Date(new Date().setHours(0,0,0,0))) cell.classList.add('past');
+                
+                cell.innerHTML = `
+                    <div class="cell-header">
+                        <span class="date-num">${d}</span>
+                    </div>
+                    <div class="cell-tasks"></div>
+                `;
+                const tCont = cell.querySelector('.cell-tasks');
+
+                if (sched[dStr]) {
+                    sched[dStr].forEach(st => {
+                        const urg = getUrgencyStatus(st);
+                        const el = document.createElement('div');
+                        el.className = `cal-task ${urg.class}`;
+                        el.title = `【${st.name}】 期日: ${st.deadline} (${st.assigned}h)`;
+                        el.textContent = st.name;
+                        el.onclick = (e) => { e.stopPropagation(); openTaskModal(st.id); };
+                        tCont.appendChild(el);
+                    });
+                }
+                
+                cell.onclick = () => {
+                    document.getElementById('taskForm').reset();
+                    document.getElementById('taskModalTitle').textContent = '新規タスクの登録';
+                    document.getElementById('t-id').value = '';
+                    document.getElementById('t-dead').value = dStr;
+                    document.getElementById('t-pri').value = '2';
+                    if (currentTaskFilter === 'private') document.getElementById('cat-priv').checked = true;
+                    else document.getElementById('cat-biz').checked = true;
+                    document.getElementById('btnDeleteTask').style.display = 'none';
+                    document.getElementById('taskModal').classList.add('active');
+                };
+
+                grid.appendChild(cell);
+            }
+            const remain = 42 - (firstDay + daysInMonth); 
+            for(let i=0; i < remain; i++){ 
+                const el = document.createElement('div'); 
+                el.className = 'day-cell past'; 
+                grid.appendChild(el); 
+            }
+        }
+
+        function renderList() {
+            const listObj = document.getElementById('taskList'); listObj.innerHTML = ''; 
+            const targetTasks = getFilteredTasks();
+            
+            if (!targetTasks.length) {
+                listObj.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px 0; font-size:11.5px;">登録されたタスクはありません。</div>';
+                return;
+            }
+            const sorted = [...targetTasks].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            sorted.forEach(t => {
+                const urg = getUrgencyStatus(t); const card = document.createElement('div'); card.className = 'task-card';
+                const catLabel = t.category === 'business' ? '業 務' : '個 人';
+                card.innerHTML = `
+                    <button class="check-btn" onclick="quickCompleteTask('${t.id}', this)"></button>
+                    <div class="task-info" onclick="openTaskModal('${t.id}')">
+                        <div class="task-title"><div class="p-dot p${t.priority}"></div><span>${t.name}</span><span class="cat-badge">${catLabel}</span></div>
+                        <div class="task-meta"><span style="color:${urg.color}; font-weight:800;">${urg.label}</span><span>${t.hours}h</span></div>
+                    </div>
+                `;
+                listObj.appendChild(card);
+            });
+        }
+
+        function renderMatrix() {
+            for(let i=1; i<=4; i++) document.getElementById(`quad${i}`).innerHTML = '';
+            const sorted = [...getFilteredTasks()].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            sorted.forEach(t => {
+                const urg = getUrgencyStatus(t); const el = document.createElement('div'); el.className = 'mini-card';
+                el.innerHTML = `
+                    <div class="mini-check" onclick="quickCompleteTask('${t.id}', this)"></div>
+                    <div class="mini-info" onclick="openTaskModal('${t.id}')">
+                        <div class="mini-title">${t.name}</div>
+                        <div class="mini-date" style="color:${urg.color};">${urg.label}</div>
+                    </div>
+                `;
+                document.getElementById(`quad${t.priority}`).appendChild(el);
+            });
+        }
+
+        function handleQuadClick(e, pri) {
+            if(e.target.closest('.mini-card') || e.target.closest('.mini-check')) return;
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskModalTitle').textContent = '新規タスクの登録';
+            document.getElementById('t-id').value = '';
+            document.getElementById('t-dead').value = formatYMD(new Date());
+            document.getElementById('t-pri').value = pri; 
+            if(currentTaskFilter === 'private') document.getElementById('cat-priv').checked = true;
+            else document.getElementById('cat-biz').checked = true;
+            document.getElementById('btnDeleteTask').style.display = 'none';
+            document.getElementById('taskModal').classList.add('active');
+        }
+
+        function quickCompleteTask(id, btnElement) {
+            btnElement.classList.add('checked'); const card = btnElement.closest('.task-card') || btnElement.closest('.mini-card');
+            if(card) card.classList.add('completing'); setTimeout(() => { tasks = tasks.filter(t => t.id !== id); saveTasks(); refresh(); }, 180);
+        }
+
+        // =========================================
+        // 出張システム (タイムライン)
+        // =========================================
+        function selectProj(id) {
+            currentProjId = id; const proj = tripProjs.find(p => p.id === id);
+            if (proj) currentTripDate = proj.start;
+            renderTripView(); if(currentTabId === 'pack') renderPackView();
+        }
+
+        function selectTripDate(dateStr) { currentTripDate = dateStr; renderTripView(); }
+        function timeToDecimal(timeStr) { const [h, m] = timeStr.split(':').map(Number); return h + (m / 60); }
+
+        function renderTripView() {
+            const projTabs = document.getElementById('projListTabs');
+            const dateTabs = document.getElementById('tripDateTabs');
+            const ganttWrap = document.getElementById('tripGantt');
+            const fixedColumn = document.getElementById('ganttFixedColumn');
+            const fixedBody = document.getElementById('tripFixedBody');
+            
+            projTabs.innerHTML = ''; dateTabs.innerHTML = '';
+            dateTabs.style.display = 'none'; // 初期状態は非表示
+
+            if(tripProjs.length === 0) {
+                fixedColumn.style.display = 'none';
+                ganttWrap.style.minWidth = 'auto'; 
+                ganttWrap.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px 0; font-size:11.5px; width:100%;">右下のボタンから出張プロジェクトを登録してください</div>';
+                fixedBody.innerHTML = '';
+                return;
+            }
+
+            tripProjs.sort((a,b) => new Date(a.start) - new Date(b.start)).forEach(p => {
+                const isActive = p.id === currentProjId;
+                const pill = document.createElement('div'); pill.className = `trip-pill ${isActive ? 'active-proj' : ''}`;
+                let editHtml = isActive ? `<svg class="icon edit-icon" style="margin-left:3px; opacity:0.8; width:12px; height:12px;" onclick="event.stopPropagation(); openProjModal('${p.id}')" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>` : '';
+                pill.innerHTML = `${p.title} ${editHtml}`;
+                pill.onclick = () => selectProj(p.id);
+                projTabs.appendChild(pill);
+            });
+
+            if(!currentProjId) {
+                fixedColumn.style.display = 'none';
+                ganttWrap.style.minWidth = 'auto'; 
+                ganttWrap.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px 0; font-size:11.5px; width:100%;">対象のプロジェクトを選択してください</div>';
+                fixedBody.innerHTML = '';
+                return;
+            }
+
+            // プロジェクトが選択されている時は、日付エリアと固定列を表示する
+            dateTabs.style.display = 'flex';
+            fixedColumn.style.display = 'flex';
+            ganttWrap.style.minWidth = '800px'; 
+            
+            const proj = tripProjs.find(p => p.id === currentProjId); if(!proj) return;
+
+            let curr = new Date(proj.start); const end = new Date(proj.end);
+            const weeks = ['日','月','火','水','木','金','土'];
+            
+            while(curr <= end) {
+                const dStr = formatYMD(curr); const isActive = dStr === currentTripDate;
+                const pill = document.createElement('div'); pill.className = `trip-pill ${isActive ? 'active-date' : ''}`;
+                pill.textContent = `${String(curr.getMonth()+1).padStart(2,'0')}/${String(curr.getDate()).padStart(2,'0')} (${weeks[curr.getDay()]})`;
+                pill.onclick = () => selectTripDate(dStr);
+                dateTabs.appendChild(pill); curr.setDate(curr.getDate() + 1);
+            }
+
+            if(!currentTripDate) currentTripDate = proj.start;
+            const scheds = tripScheds.filter(s => s.projectId === currentProjId);
+            
+            let headHtml = `
+                <div class="gantt-head">
+                    <div class="gantt-axis">
+                        <div class="gantt-track-inner" style="display:flex; justify-content:space-between;">
+            `;
+            for(let i=6; i<=22; i++) { headHtml += `<div class="gantt-tick">${i}:00</div>`; }
+            headHtml += `       </div>
+                    </div>
+                </div>
+                <div class="gantt-body">
+                    <div class="gantt-lines"><div class="gantt-track-inner" id="gantt-lines-inner" style="height:100%;"></div></div>
+            `;
+            
+            const dayScheds = scheds.filter(s => s.date === currentTripDate).sort((a,b) => a.start.localeCompare(b.start));
+            let fixedHtml = '';
+
+            if(dayScheds.length === 0) {
+                fixedHtml += `
+                    <div class="gantt-fixed-row" style="align-items:center;">
+                        <div style="font-size:10px; color:var(--text-muted);">--:--</div>
+                    </div>`;
+                headHtml += `
+                    <div class="gantt-row" style="z-index:1;">
+                        <div class="gantt-row-track" style="display:flex; align-items:center;">
+                            <div style="font-size:11px; color:var(--text-muted); margin-left:16px; font-weight:700;">登録された予定はありません</div>
+                        </div>
+                    </div>`;
+            } else {
+                dayScheds.forEach(t => {
+                    fixedHtml += `
+                        <div class="gantt-fixed-row" onclick="openSchedModal('${t.id}')" title="${t.name}">
+                            <div class="gantt-row-time-txt">${t.start} - ${t.end}</div>
+                            <div class="gantt-row-task-txt">${t.name}</div>
+                        </div>
+                    `;
+
+                    const sDec = timeToDecimal(t.start); const eDec = timeToDecimal(t.end);
+                    const cS = Math.max(6, Math.min(22, sDec)); const cE = Math.max(6, Math.min(22, eDec));
+                    const leftPercent = ((cS - 6) / 16) * 100; const widthPercent = Math.max(1, ((cE - cS) / 16) * 100);
+
+                    let extraIcons = '';
+                    if(t.seat) extraIcons += `<span style="display:flex; align-items:center; gap:2px;"><svg class="icon" style="width:10px; height:10px;" viewBox="0 0 24 24"><path d="M4 18v3h16v-3M4 14h16v-4c0-2-1-4-3-4H7c-2 0-3 2-3 4v4z"/></svg>${t.seat}</span>`;
+                    if(t.hotel) extraIcons += `<span style="display:flex; align-items:center; gap:2px; margin-left:6px;"><svg class="icon" style="width:10px; height:10px;" viewBox="0 0 24 24"><path d="M3 2v20M21 2v20M3 14h18M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM10 14V9h7v5"/></svg>${t.hotel}</span>`;
+
+                    headHtml += `
+                        <div class="gantt-row">
+                            <div class="gantt-row-track" onclick="openSchedModal('${t.id}')">
+                                <div class="gantt-track-inner">
+                                    <div class="gantt-bar" style="left: ${leftPercent}%; width: ${widthPercent}%;" title="${t.name} (${t.start}-${t.end})">
+                                        <span style="overflow:hidden; text-overflow:ellipsis;">${t.name}</span>
+                                        ${extraIcons !== '' ? `<span style="display:flex; margin-left:auto; font-size:9px; font-weight:600;">${extraIcons}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            fixedHtml += `<div style="flex:1; min-height:38px;" onclick="openSchedModal()"></div>`;
+            headHtml += `
+                <div class="gantt-row" style="flex: 1; border-bottom: none; max-height: none; min-height: 38px; z-index: 1;" onclick="openSchedModal()">
+                    <div class="gantt-row-track"></div>
+                </div>
+            `;
+            
+            headHtml += `</div>`; 
+            fixedBody.innerHTML = fixedHtml;
+            ganttWrap.innerHTML = headHtml;
+
+            const scrollArea = document.getElementById('tripScrollArea');
+            if(scrollArea && fixedBody) {
+                scrollArea.onscroll = () => { fixedBody.scrollTop = scrollArea.scrollTop; };
+            }
+
+            const linesCont = ganttWrap.querySelector('#gantt-lines-inner');
+            if (linesCont) {
+                for (let i = 6; i <= 22; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'gantt-line';
+                    line.style.left = `${((i - 6) / 16) * 100}%`;
+                    linesCont.appendChild(line);
+                }
+            }
+        }
+
+        // =========================================
+        // パッキング (持ち物・準備物)
+        // =========================================
+        function renderPackView() {
+            const projTabs = document.getElementById('packProjListTabs');
+            const packContent = document.getElementById('packContent');
+            projTabs.innerHTML = '';
+            
+            if(tripProjs.length === 0) {
+                packContent.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px 0; font-size:11.5px;">出張プロジェクトを登録してください</div>'; return;
+            }
+
+            tripProjs.sort((a,b) => new Date(a.start) - new Date(b.start)).forEach(p => {
+                const isActive = p.id === currentProjId; const pill = document.createElement('div');
+                pill.className = `trip-pill ${isActive ? 'active-proj' : ''}`; pill.textContent = p.title; pill.onclick = () => selectProj(p.id);
+                projTabs.appendChild(pill);
+            });
+
+            if(!currentProjId) {
+                packContent.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px 0; font-size:11.5px;">対象のプロジェクトを選択してください</div>'; return;
+            }
+
+            const items = tripItems.filter(i => i.projectId === currentProjId);
+            const scheds = tripScheds.filter(s => s.projectId === currentProjId).sort((a,b) => a.start.localeCompare(b.start));
+            
+            const totalCount = items.length;
+            const checkedCount = items.filter(i => i.isChecked).length;
+            const percent = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+
+            const groupedItems = {};
+            scheds.forEach(s => { groupedItems[s.id] = { sched: s, items: [] }; });
+            groupedItems['common'] = { sched: { name: 'プロジェクト共通・基本持ち物' }, items: [] };
+
+            items.forEach(item => { if (item.schedId && groupedItems[item.schedId]) { groupedItems[item.schedId].items.push(item); } else { groupedItems['common'].items.push(item); } });
+
+            let html = `
+                <div class="pack-summary-card">
+                    <div>
+                        <div style="font-size:12.5px; font-weight:800; color:var(--text-main);">パッキング状況</div>
+                        <div style="font-size:10.5px; color:var(--text-sub); margin-top:2px; font-weight:600;">${checkedCount} / ${totalCount} 完了 (${percent}%)</div>
+                    </div>
+                    <div>
+                        <div class="pack-progress-bar"><div class="pack-progress-fill" style="width:${percent}%;"></div></div>
+                    </div>
+                </div>
+
+                <div class="pack-input-wrapper" style="margin-bottom:12px; background:var(--bg-surface); border-radius:var(--radius-md); border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <input type="text" id="newPackInput" class="pack-input" placeholder="持ち物を追加..." list="history-items" autocomplete="off" onkeypress="if(event.key==='Enter') addPackItem()">
+                    <select id="newPackSchedId" class="pack-input" style="flex:0.5; min-width:80px; padding: 0 6px; font-weight:600;">
+                        <option value="">(共通)</option>
+                        ${scheds.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                    </select>
+                    <button class="pack-add-btn" onclick="addPackItem()">追加</button>
+                </div>
+            `;
+
+            Object.keys(groupedItems).forEach(key => {
+                const group = groupedItems[key];
+                if (key !== 'common' && group.items.length === 0) return; 
+                if (key === 'common' && group.items.length === 0 && Object.keys(groupedItems).length > 1) return; 
+
+                html += `<div class="pack-group"><div class="pack-group-header">${group.sched.name}</div>`;
+                if (group.items.length === 0) { html += `<div style="padding:10px; font-size:11px; font-weight:600; color:var(--text-muted);">登録されていません</div>`; } 
+                else {
+                    group.items.sort((a,b) => (a.isChecked === b.isChecked)? 0 : a.isChecked ? 1 : -1).forEach(item => {
+                        html += `<div class="pack-item ${item.isChecked ? 'checked' : ''}" onclick="togglePackItem('${item.id}')"><div class="check-btn ${item.isChecked ? 'checked' : ''}"></div><div class="pack-name">${item.name}</div><button class="pack-del" onclick="event.stopPropagation(); deletePackItem('${item.id}')">×</button></div>`;
+                    });
+                }
+                html += `</div>`;
+            });
+            packContent.innerHTML = html;
+        }
+
+        function addPackItem() {
+            const input = document.getElementById('newPackInput'); const schedSelect = document.getElementById('newPackSchedId'); const name = input.value.trim();
+            if(!name || !currentProjId) return;
+            tripItems.push({ id: 'item_' + Date.now().toString() + Math.random().toString(36).substr(2, 5), projectId: currentProjId, schedId: schedSelect.value || null, name: name, isChecked: false });
+            saveHistory('items', name); saveTrips(); renderPackView();
+            input.value = ''; 
+        }
+
+        function togglePackItem(id) { const item = tripItems.find(i => i.id === id); if(item) { item.isChecked = !item.isChecked; saveTrips(); renderPackView(); } }
+        function deletePackItem(id) { tripItems = tripItems.filter(i => i.id !== id); saveTrips(); renderPackView(); }
+
+        function exportExcel() {
+            if(!currentProjId) return alert('プロジェクトを選択してください');
+            const proj = tripProjs.find(p => p.id === currentProjId); const scheds = tripScheds.filter(s => s.projectId === currentProjId);
+            if(scheds.length === 0) return alert('出力する行程データが存在しません');
+            scheds.sort((a,b) => { if(a.date !== b.date) return new Date(a.date) - new Date(b.date); return a.start.localeCompare(b.start); });
+            let csv = '\uFEFF'; csv += '出張名,日付,開始時刻,終了時刻,行程内容,座席,宿泊先\n';
+            scheds.forEach(s => { csv += `"${proj.title}","${s.date.replace(/-/g,'/')}","${s.start}","${s.end}","${s.name}","${s.seat||''}","${s.hotel||''}"\n`; });
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${proj.title}_行程表.csv`; a.click();
+        }
+
+        document.getElementById('taskForm').onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('t-id').value; const name = document.getElementById('t-name').value;
+            const category = document.querySelector('input[name="t-cat"]:checked').value;
+            const data = { 
+                name: name, category: category,
+                deadline: document.getElementById('t-dead').value, 
+                priority: parseInt(document.getElementById('t-pri').value), 
+                hours: parseFloat(document.getElementById('t-hours').value) 
+            };
+            if (id) { const idx = tasks.findIndex(t => t.id === id); if (idx > -1) tasks[idx] = { ...tasks[idx], ...data }; } 
+            else { data.id = Date.now().toString(); data.createdAt = formatYMD(new Date()); tasks.push(data); }
+            saveHistory('tasks', name); saveTasks(); closeModal('taskModal'); refresh();
+        };
+
+        document.getElementById('projForm').onsubmit = (e) => {
+            e.preventDefault();
+            if(!rcStart || !rcEnd) { alert('カレンダーで開始日と終了日を選択してください。'); return; }
+            const id = document.getElementById('p-id').value; const name = document.getElementById('p-name').value;
+            
+            const data = { title: name, start: rcStart, end: rcEnd };
+            if (id) { const idx = tripProjs.findIndex(t => t.id === id); if (idx > -1) tripProjs[idx] = { ...tripProjs[idx], ...data }; } 
+            else { data.id = 'proj_' + Date.now().toString(); tripProjs.push(data); currentProjId = data.id; currentTripDate = data.start; }
+            saveHistory('projs', name); saveTrips(); closeModal('projModal'); refresh();
+        };
+        
+        function deleteProj() {
+            if(confirm('プロジェクトと関連する全データ(行程・持物)を削除しますか？')){
+                const id = document.getElementById('p-id').value; tripProjs = tripProjs.filter(p => p.id !== id); 
+                tripScheds = tripScheds.filter(s => s.projectId !== id); tripItems = tripItems.filter(i => i.projectId !== id);
+                if(currentProjId === id) { currentProjId = null; currentTripDate = null; }
+                saveTrips(); closeModal('projModal'); refresh();
+            }
+        }
+
+        document.getElementById('schedForm').onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('s-id').value; const name = document.getElementById('s-name').value;
+            const data = { 
+                projectId: currentProjId, name: name, 
+                date: document.getElementById('s-date').value, 
+                start: document.getElementById('s-start').value, 
+                end: document.getElementById('s-end').value,
+                seat: document.getElementById('s-seat').value,
+                hotel: document.getElementById('s-hotel').value
+            };
+            if (id) { const idx = tripScheds.findIndex(t => t.id === id); if (idx > -1) tripScheds[idx] = { ...tripScheds[idx], ...data }; } 
+            else { data.id = 'sch_' + Date.now().toString(); tripScheds.push(data); currentTripDate = data.date; }
+            
+            const itemsStr = document.getElementById('s-items').value;
+            if (itemsStr && itemsStr.trim() !== '') {
+                itemsStr.split(',').map(s => s.trim()).filter(s => s !== '').forEach(itemName => {
+                    tripItems.push({ id: 'item_' + Date.now().toString() + Math.random().toString(36).substr(2, 5), projectId: currentProjId, schedId: data.id, name: itemName, isChecked: false });
+                    saveHistory('items', itemName);
+                });
+            }
+            saveHistory('scheds', name); saveTrips(); closeModal('schedModal'); refresh();
+        };
+
+        function openTaskModal(id = null) {
+            document.getElementById('taskForm').reset(); const delBtn = document.getElementById('btnDeleteTask');
+            if(id){ 
+                const t=tasks.find(x=>x.id===id); 
+                document.getElementById('taskModalTitle').textContent='タスクの編集'; 
+                document.getElementById('t-id').value=t.id; document.getElementById('t-name').value=t.name; 
+                document.getElementById('t-dead').value=t.deadline; document.getElementById('t-pri').value=t.priority; document.getElementById('t-hours').value=t.hours;
+                if(t.category === 'private') document.getElementById('cat-priv').checked = true; else document.getElementById('cat-biz').checked = true;
+                delBtn.style.display='block'; 
+            } else { 
+                document.getElementById('taskModalTitle').textContent='新規タスクの登録'; 
+                document.getElementById('t-id').value=''; document.getElementById('t-dead').value=formatYMD(new Date()); document.getElementById('t-pri').value='2'; 
+                if(currentTaskFilter === 'private') document.getElementById('cat-priv').checked = true; else document.getElementById('cat-biz').checked = true;
+                delBtn.style.display='none'; 
+            }
+            document.getElementById('taskModal').classList.add('active');
+        }
+        function deleteTask() { if(confirm('対象のデータを削除しますか？')){ tasks = tasks.filter(t => t.id !== document.getElementById('t-id').value); saveTasks(); closeModal('taskModal'); refresh(); } }
+
+        function openProjModal(id = null) {
+            document.getElementById('projForm').reset(); const delBtn = document.getElementById('btnDeleteProj');
+            if (id) {
+                const p = tripProjs.find(x => x.id === id); document.getElementById('projModalTitle').textContent = 'プロジェクトの編集'; document.getElementById('p-id').value = p.id; document.getElementById('p-name').value = p.title;
+                rcStart = p.start; rcEnd = p.end; rcCurrentDate = new Date(p.start);
+                delBtn.style.display = 'block';
+            } else {
+                document.getElementById('projModalTitle').textContent = '新規出張の登録'; document.getElementById('p-id').value = ''; 
+                rcStart = null; rcEnd = null; rcCurrentDate = new Date();
+                delBtn.style.display = 'none';
+            }
+            renderRangeCalendar();
+            document.getElementById('projModal').classList.add('active');
+        }
+
+        function openSchedModal(id = null) {
+            document.getElementById('schedForm').reset(); const delBtn = document.getElementById('btnDeleteSched');
+            document.getElementById('s-items').value = ''; 
+            if (id) {
+                const s = tripScheds.find(x => x.id === id); document.getElementById('schedModalTitle').textContent = '行程の編集'; document.getElementById('s-id').value = s.id; document.getElementById('s-name').value = s.name; document.getElementById('s-date').value = s.date; document.getElementById('s-start').value = s.start; document.getElementById('s-end').value = s.end; 
+                document.getElementById('s-seat').value = s.seat || ''; document.getElementById('s-hotel').value = s.hotel || '';
+                delBtn.style.display = 'block';
+            } else {
+                document.getElementById('schedModalTitle').textContent = '行程の追加'; document.getElementById('s-id').value = ''; document.getElementById('s-date').value = currentTripDate || formatYMD(new Date()); 
+                document.getElementById('s-seat').value = ''; document.getElementById('s-hotel').value = '';
+                delBtn.style.display = 'none';
+            }
+            document.getElementById('schedModal').classList.add('active');
+        }
+        function deleteSched() { if(confirm('対象のデータを削除しますか？')){ tripScheds = tripScheds.filter(s => s.id !== document.getElementById('s-id').value); saveTrips(); closeModal('schedModal'); refresh(); } }
+
+        load(); refresh();
+    </script>
+</body>
+</html>
