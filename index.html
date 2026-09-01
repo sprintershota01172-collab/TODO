@@ -157,6 +157,20 @@
         body.dark-mode .cal-task.u-warn { background: rgba(217, 119, 6, 0.3); color: #FCD34D; border-left-color: #F59E0B; }
         .cal-task.u-safe { background: #DBEAFE; color: #1E40AF; border-left-color: #2563EB; }
         body.dark-mode .cal-task.u-safe { background: rgba(37, 99, 235, 0.3); color: #93C5FD; border-left-color: #3B82F6; }
+        
+        /* 予定用のスタイル追加 */
+        .cal-task.cal-plan { background: rgba(79, 70, 229, 0.15); color: var(--trip-brand); border-left-color: var(--trip-brand); }
+        body.dark-mode .cal-task.cal-plan { background: rgba(99, 102, 241, 0.25); color: #A5B4FC; border-left-color: #6366F1; }
+
+        /* スマートフォン向け：文字途切れを防ぐためドット表示に切り替え */
+        @media (max-width: 767px) {
+            .cell-tasks { flex-direction: row; flex-wrap: wrap; gap: 3px; align-content: flex-start; }
+            .cal-task { width: 6px; height: 6px; border-radius: 50%; padding: 0; border: none; font-size: 0; color: transparent; flex-shrink: 0; }
+            .cal-task.u-alert { background: var(--status-err); }
+            .cal-task.u-warn { background: var(--status-warn); }
+            .cal-task.u-safe { background: var(--accent); }
+            .cal-task.cal-plan { background: var(--trip-brand); }
+        }
 
         .list-scroll-area { flex: 1; overflow-y: auto; padding: 6px 8px; -ms-overflow-style: none; scrollbar-width: none; }
         .list-scroll-area::-webkit-scrollbar { display: none; }
@@ -197,7 +211,7 @@
         
         .mini-card { 
             background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); 
-            padding: 6px; display: flex; align-items: flex-start; gap: 6px; flex-shrink: 0; box-shadow: var(--shadow-sm);
+            padding: 6px; display: flex; align-items: flex-start; gap: 6px; flex-shrink: 0; box-shadow: var(--shadow-sm); cursor: pointer;
         }
         .mini-check { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;}
         .mini-check.checked { background: var(--text-main); border-color: var(--text-main); }
@@ -250,10 +264,7 @@
         .gantt-head { display: flex; background: var(--bg-header); flex-shrink: 0; height: 33px; border-bottom: 1px solid var(--border); }
         .gantt-axis { flex: 1; display: flex; padding: 6px 0; }
         
-        /* 左右のマージンを少し増やして、端の文字が切れないようにする */
         .gantt-track-inner { position: relative; margin: 0 16px; flex: 1; }
-        
-        /* width: 0 と justify-content: center で中央から両側に広がるように修正 */
         .gantt-tick { font-size: 9px; font-weight: 800; color: var(--text-muted); position: relative; width: 0; display: flex; justify-content: center; overflow: visible; white-space: nowrap; }
         
         .gantt-lines { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
@@ -339,7 +350,7 @@
         .grid-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; width: 100%; }
         .btn-row { display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); justify-content: flex-end;}
         
-        .btn { padding: 10px 14px; border: 1px solid transparent; border-radius: var(--radius-md); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px;}
+        .btn { padding: 10px 14px; border: 1px solid transparent; border-radius: var(--radius-md); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;}
         .btn-primary { background: var(--text-main); color: var(--bg-surface); }
         .btn-trip { background: linear-gradient(135deg, var(--trip-brand), #3730A3); color: white; }
         .btn-cancel { background: var(--bg-surface); color: var(--text-sub); border-color: var(--border); }
@@ -352,7 +363,7 @@
         .rc-header span { font-size: 11.5px; font-weight: 800;}
         .rc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); }
         .rc-day-head { background: var(--bg-header); font-size: 9.5px; font-weight: bold; text-align: center; padding: 4px 0; color: var(--text-sub);}
-        .rc-cell { background: var(--bg-surface); text-align: center; padding: 6px 0; font-size: 11.5px; font-weight: 700;}
+        .rc-cell { background: var(--bg-surface); text-align: center; padding: 6px 0; font-size: 11.5px; font-weight: 700; cursor: pointer;}
         .rc-cell.past-month { color: var(--text-muted); opacity: 0.3; }
         .rc-cell.in-range { background: rgba(79, 70, 229, 0.1); color: var(--trip-brand); }
         .rc-cell.selected { background: var(--trip-brand); color: white; }
@@ -366,13 +377,18 @@
     <datalist id="history-scheds"></datalist>
     <datalist id="history-items"></datalist>
 
-    <!-- ＝ タブ1： カレンダー＆タスク一覧 ＝ -->
     <div id="tab-dash" class="view-container active">
         <div class="dashboard-layout">
-            <!-- 上部：全体カレンダー -->
             <div class="pane cal-pane">
                 <div class="pane-header">
                     <h2 id="monthTitle">2026.08</h2>
+                    
+                    <div class="filter-group" style="margin-left:auto; margin-right:8px;">
+                        <button class="filter-btn active" id="cal-filter-all" onclick="setCalFilter('all')">すべて</button>
+                        <button class="filter-btn" id="cal-filter-plan" onclick="setCalFilter('plan')">予定</button>
+                        <button class="filter-btn" id="cal-filter-todo" onclick="setCalFilter('todo')">TODO</button>
+                    </div>
+
                     <div style="display:flex; gap:4px;">
                         <button class="nav-btn" onclick="openSettings()" title="設定"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
                         <button class="nav-btn" onclick="changeMonth(-1)" title="前月"><svg class="icon" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
@@ -385,7 +401,6 @@
                 </div>
             </div>
 
-            <!-- 下部：進行中のタスク一覧 -->
             <div class="pane list-pane">
                 <div class="pane-header">
                     <h2>タスク一覧</h2>
@@ -400,7 +415,6 @@
         </div>
     </div>
 
-    <!-- ＝ タブ2： 4分割マトリクス ＝ -->
     <div id="tab-matrix" class="view-container">
         <div style="padding: 8px 8px 0 8px; display:flex; justify-content:flex-end;">
             <div class="filter-group">
@@ -425,7 +439,6 @@
         </div>
     </div>
 
-    <!-- ＝ タブ3： 出張タイムライン ＝ -->
     <div id="tab-trip" class="view-container">
         <div class="dashboard-layout">
             <div class="pane" style="flex:1;">
@@ -449,12 +462,10 @@
 
                 <div class="gantt-outer">
                     <div class="gantt-container-wrapper" id="ganttContainerWrapper">
-                        <!-- 左側固定カラム -->
                         <div class="gantt-fixed-column" id="ganttFixedColumn">
                             <div class="gantt-fixed-head">時間・行程</div>
                             <div class="gantt-fixed-body" id="tripFixedBody"></div>
                         </div>
-                        <!-- 右側スクロール領域 -->
                         <div class="gantt-scrollable-area" id="tripScrollArea">
                             <div class="gantt-inner" id="tripGantt"></div>
                         </div>
@@ -464,7 +475,6 @@
         </div>
     </div>
 
-    <!-- ＝ タブ4： 持ち物と準備 (Packing) ＝ -->
     <div id="tab-pack" class="view-container">
         <div class="dashboard-layout">
             <div class="pane" style="flex:1;">
@@ -481,12 +491,10 @@
         </div>
     </div>
 
-    <!-- 共通 FAB (タスク/行程追加) -->
     <button id="mainFab" class="fab" onclick="handleFabClick()">
         <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
 
-    <!-- ボトムナビゲーション -->
     <nav class="bottom-nav">
         <div class="nav-tab active" onclick="switchTab('dash', this)">
             <svg class="icon nav-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -506,11 +514,33 @@
         </div>
     </nav>
 
-    <!-- ===================================== -->
-    <!-- モーダル群 -->
-    <!-- ===================================== -->
+    <div class="modal-overlay" id="dailyModal">
+        <div class="modal-content">
+            <div class="m-header">
+                <span id="dailyModalTitle">2026/09/02</span>
+                <button type="button" class="btn-close" onclick="closeModal('dailyModal')">×</button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 11.5px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                    <svg class="icon" style="color:var(--trip-brand); width:14px; height:14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 予定 (行程など)
+                </div>
+                <div id="dailyPlanList" style="margin-bottom: 8px;"></div>
+            </div>
+            
+            <div>
+                <div style="font-size: 11.5px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                    <svg class="icon" style="color:var(--status-ok); width:14px; height:14px;" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> TODO (タスク)
+                </div>
+                <div id="dailyTodoList"></div>
+            </div>
+            
+            <div class="btn-row" style="margin-top: 16px;">
+                <button class="btn btn-primary" style="flex:1;" onclick="closeModal('dailyModal'); openTaskModalWithDate(window.selectedDateForNew)">＋ この日にタスクを追加</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- タスク追加・編集モーダル -->
     <div class="modal-overlay" id="taskModal">
         <div class="modal-content">
             <div class="m-header">
@@ -543,7 +573,6 @@
         </div>
     </div>
 
-    <!-- 出張プロジェクト登録モーダル -->
     <div class="modal-overlay" id="projModal">
         <div class="modal-content">
             <div class="m-header">
@@ -577,7 +606,6 @@
         </div>
     </div>
 
-    <!-- 行程登録モーダル -->
     <div class="modal-overlay" id="schedModal">
         <div class="modal-content">
             <div class="m-header">
@@ -623,7 +651,6 @@
         </div>
     </div>
 
-    <!-- システム設定モーダル -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-content">
             <div class="m-header">
@@ -677,6 +704,7 @@
         
         let currentDate = new Date(); let currentTabId = 'dash'; let currentProjId = null; let currentTripDate = null;
         let currentTaskFilter = 'all'; 
+        let currentCalFilter = 'all'; // NEW: カレンダー表示用フィルター
         const DAILY_HOURS = 8;
 
         function load() {
@@ -796,11 +824,19 @@
 
         function setTaskFilter(filter) {
             currentTaskFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.list-pane .filter-btn, #tab-matrix .filter-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`filter-${filter}`).classList.add('active');
             document.getElementById(`m-filter-${filter}`).classList.add('active');
             refresh();
         }
+        
+        function setCalFilter(filter) {
+            currentCalFilter = filter;
+            document.querySelectorAll('#tab-dash .pane-header .filter-group .filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`cal-filter-${filter}`).classList.add('active');
+            renderCalendar();
+        }
+        
         function getFilteredTasks() {
             if(currentTaskFilter === 'all') return tasks;
             return tasks.filter(t => t.category === currentTaskFilter);
@@ -929,29 +965,34 @@
                 `;
                 const tCont = cell.querySelector('.cell-tasks');
 
-                if (sched[dStr]) {
-                    sched[dStr].forEach(st => {
-                        const urg = getUrgencyStatus(st);
+                // 予定（出張行程）の描画
+                if (currentCalFilter === 'all' || currentCalFilter === 'plan') {
+                    const dayPlans = tripScheds.filter(s => s.date === dStr);
+                    dayPlans.forEach(plan => {
                         const el = document.createElement('div');
-                        el.className = `cal-task ${urg.class}`;
-                        el.title = `【${st.name}】 期日: ${st.deadline} (${st.assigned}h)`;
-                        el.textContent = st.name;
-                        el.onclick = (e) => { e.stopPropagation(); openTaskModal(st.id); };
+                        el.className = `cal-task cal-plan`;
+                        el.title = `【予定】${plan.start}-${plan.end} ${plan.name}`;
+                        el.textContent = plan.name;
                         tCont.appendChild(el);
                     });
                 }
+
+                // TODOの描画
+                if (currentCalFilter === 'all' || currentCalFilter === 'todo') {
+                    if (sched[dStr]) {
+                        sched[dStr].forEach(st => {
+                            const urg = getUrgencyStatus(st);
+                            const el = document.createElement('div');
+                            el.className = `cal-task ${urg.class}`;
+                            el.title = `【${st.name}】 期日: ${st.deadline} (${st.assigned}h)`;
+                            el.textContent = st.name;
+                            tCont.appendChild(el);
+                        });
+                    }
+                }
                 
-                cell.onclick = () => {
-                    document.getElementById('taskForm').reset();
-                    document.getElementById('taskModalTitle').textContent = '新規タスクの登録';
-                    document.getElementById('t-id').value = '';
-                    document.getElementById('t-dead').value = dStr;
-                    document.getElementById('t-pri').value = '2';
-                    if (currentTaskFilter === 'private') document.getElementById('cat-priv').checked = true;
-                    else document.getElementById('cat-biz').checked = true;
-                    document.getElementById('btnDeleteTask').style.display = 'none';
-                    document.getElementById('taskModal').classList.add('active');
-                };
+                // NEW: クリックで日別詳細モーダルを開く
+                cell.onclick = () => openDailyModal(dStr);
 
                 grid.appendChild(cell);
             }
@@ -961,6 +1002,70 @@
                 el.className = 'day-cell past'; 
                 grid.appendChild(el); 
             }
+        }
+        
+        // NEW: 日別詳細モーダルを開く関数
+        function openDailyModal(dateStr) {
+            document.getElementById('dailyModalTitle').textContent = dateStr.replace(/-/g, '/');
+            const planList = document.getElementById('dailyPlanList');
+            const todoList = document.getElementById('dailyTodoList');
+            planList.innerHTML = ''; todoList.innerHTML = '';
+
+            // 予定の取得（出張行程）
+            const dayScheds = tripScheds.filter(s => s.date === dateStr).sort((a,b) => a.start.localeCompare(b.start));
+            if (dayScheds.length === 0) {
+                planList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding: 10px 0;">予定はありません</div>';
+            } else {
+                dayScheds.forEach(s => {
+                    const proj = tripProjs.find(p => p.id === s.projectId);
+                    const pTitle = proj ? proj.title : '';
+                    planList.innerHTML += `
+                        <div class="mini-card" onclick="openSchedModal('${s.id}')" style="margin-bottom:6px;">
+                            <div class="mini-info">
+                                <div style="font-size:9.5px; color:var(--trip-brand); font-weight:800; margin-bottom:2px;">${s.start} - ${s.end} [${pTitle}]</div>
+                                <div class="mini-title">${s.name}</div>
+                            </div>
+                        </div>`;
+                });
+            }
+
+            // TODOの取得（当日に期限があるもの、またはスケジュールされたもの）
+            const schedMap = createSchedule();
+            const dayTodos = schedMap[dateStr] || [];
+            const deadLineTasks = tasks.filter(t => t.deadline === dateStr);
+            const mergedTodos = [...new Map([...dayTodos, ...deadLineTasks].map(item => [item.id, item])).values()];
+
+            if (mergedTodos.length === 0) {
+                todoList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding: 10px 0;">TODOはありません</div>';
+            } else {
+                mergedTodos.forEach(t => {
+                    const urg = getUrgencyStatus(t);
+                    todoList.innerHTML += `
+                        <div class="mini-card" style="margin-bottom:6px;">
+                            <div class="mini-check" onclick="quickCompleteTask('${t.id}', this)"></div>
+                            <div class="mini-info" onclick="openTaskModal('${t.id}')">
+                                <div class="mini-title">${t.name}</div>
+                                <div class="mini-date" style="color:${urg.color};">${urg.label}</div>
+                            </div>
+                        </div>`;
+                });
+            }
+
+            window.selectedDateForNew = dateStr;
+            document.getElementById('dailyModal').classList.add('active');
+        }
+        
+        // NEW: 日付指定でタスク作成モーダルを開く
+        function openTaskModalWithDate(dateStr) {
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskModalTitle').textContent = '新規タスクの登録';
+            document.getElementById('t-id').value = '';
+            document.getElementById('t-dead').value = dateStr;
+            document.getElementById('t-pri').value = '2';
+            if(currentTaskFilter === 'private') document.getElementById('cat-priv').checked = true;
+            else document.getElementById('cat-biz').checked = true;
+            document.getElementById('btnDeleteTask').style.display = 'none';
+            document.getElementById('taskModal').classList.add('active');
         }
 
         function renderList() {
@@ -1040,7 +1145,7 @@
             const fixedBody = document.getElementById('tripFixedBody');
             
             projTabs.innerHTML = ''; dateTabs.innerHTML = '';
-            dateTabs.style.display = 'none'; // 初期状態は非表示
+            dateTabs.style.display = 'none'; 
 
             if(tripProjs.length === 0) {
                 fixedColumn.style.display = 'none';
@@ -1067,7 +1172,6 @@
                 return;
             }
 
-            // プロジェクトが選択されている時は、日付エリアと固定列を表示する
             dateTabs.style.display = 'flex';
             fixedColumn.style.display = 'flex';
             ganttWrap.style.minWidth = '800px'; 
@@ -1119,8 +1223,8 @@
                 dayScheds.forEach(t => {
                     fixedHtml += `
                         <div class="gantt-fixed-row" onclick="openSchedModal('${t.id}')" title="${t.name}">
-                            <div class="gantt-row-time-txt">${t.start} - ${t.end}</div>
-                            <div class="gantt-row-task-txt">${t.name}</div>
+                            <div class="gantt-row-time-txt" style="font-size:9.5px; font-weight:800;">${t.start} - ${t.end}</div>
+                            <div class="gantt-row-task-txt" style="font-size:10.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.name}</div>
                         </div>
                     `;
 
