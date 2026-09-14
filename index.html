@@ -763,6 +763,16 @@
                     <label>Title (予定内容)</label>
                     <input type="text" id="s-name" class="form-ctrl" required placeholder="例: ディナークルーズ" list="history-scheds" autocomplete="off">
                 </div>
+
+                <div class="input-group" style="margin-top:6px;">
+                    <label>Category (区分)</label>
+                    <div class="seg-group" style="padding:2px;">
+                        <input type="radio" id="s-cat-biz" name="s-cat" value="business" checked>
+                        <label for="s-cat-biz" class="seg-label">WORK</label>
+                        <input type="radio" id="s-cat-priv" name="s-cat" value="private">
+                        <label for="s-cat-priv" class="seg-label">PRIVATE</label>
+                    </div>
+                </div>
                 
                 <div class="input-group">
                     <label>Duration (期間)</label>
@@ -1137,11 +1147,15 @@
             renderMonthlyCalendar();
         }
 
-        function getCategoryIcon(name) {
+        function getCategoryIcon(name, category) {
+            if (category === 'business') return '<i class="fas fa-briefcase" style="color:var(--accent);"></i>';
+            if (category === 'private') return '<i class="fas fa-user" style="color:var(--p3-color);"></i>';
+            
+            // 旧データなどカテゴリが未設定の場合のフォールバック
             if(name.includes('結婚') || name.includes('Wedding')) return '<i class="fas fa-ring" style="color:var(--status-err);"></i>';
             if(name.includes('ハネムーン') || name.includes('旅行') || name.includes('出張')) return '<i class="fas fa-plane-departure" style="color:var(--accent);"></i>';
             if(name.includes('前撮り') || name.includes('写真') || name.includes('撮影')) return '<i class="fas fa-camera" style="color:var(--p3-color);"></i>';
-            return '<i class="fas fa-leaf" style="color:var(--text-sub);"></i>';
+            return '<i class="fas fa-calendar-alt" style="color:var(--accent);"></i>';
         }
 
         function extractColorFromIcon(iconStr, defaultColor) {
@@ -1152,7 +1166,8 @@
         function getCalendarEvents() {
             const events = [];
             tripScheds.forEach(s => {
-                const iconHtml = getCategoryIcon(tripProjs.find(p=>p.id===s.projectId)?.title || 'その他');
+                const projName = tripProjs.find(p=>p.id===s.projectId)?.title || 'その他';
+                const iconHtml = getCategoryIcon(projName, s.category);
                 events.push({
                     id: s.id,
                     type: 'sched',
@@ -1747,6 +1762,10 @@
                     const leftPercent = ((cS - 6) / 16) * 100; let widthPercent = ((cE - cS) / 16) * 100;
                     if(widthPercent <= 0) widthPercent = 1;
 
+                    let barColor = 'var(--accent)';
+                    if (t.category === 'private') barColor = 'var(--p3-color)';
+                    if (t.category === 'business') barColor = 'var(--accent)';
+
                     let extraIcons = '';
                     if(t.seat) extraIcons += `<span style="display:flex; align-items:center; gap:2px;"><i class="fas fa-chair" style="font-size:8px;"></i>${t.seat}</span>`;
                     if(t.hotel) extraIcons += `<span style="display:flex; align-items:center; gap:2px; margin-left:6px;"><i class="fas fa-bed" style="font-size:8px;"></i>${t.hotel}</span>`;
@@ -1755,7 +1774,7 @@
                         <div class="gantt-row">
                             <div class="gantt-row-track" onclick="openSchedModal('${t.id}')">
                                 <div class="gantt-track-inner">
-                                    <div class="gantt-bar" style="left: ${leftPercent}%; width: ${widthPercent}%;" title="${t.name}">
+                                    <div class="gantt-bar" style="left: ${leftPercent}%; width: ${widthPercent}%; background: ${barColor};" title="${t.name}">
                                         <span style="overflow:hidden; text-overflow:ellipsis;">${t.name}</span>
                                         ${extraIcons !== '' ? `<span style="display:flex; margin-left:auto; font-size:8px; font-weight:500;">${extraIcons}</span>` : ''}
                                     </div>
@@ -1940,6 +1959,7 @@
             e.preventDefault();
             const id = document.getElementById('s-id').value; const name = document.getElementById('s-name').value;
             const pId = window.isGeneralPlan ? 'GENERAL' : (currentProjId || 'GENERAL');
+            const category = document.querySelector('input[name="s-cat"]:checked').value;
             
             let sD = rcStart || formatYMD(new Date());
             let eD = rcEnd || sD;
@@ -1947,6 +1967,7 @@
             
             const data = { 
                 projectId: pId, name: name, 
+                category: category,
                 date: sD, 
                 startDate: sD,
                 endDate: eD,
@@ -2061,6 +2082,14 @@
                 rcStart = s.startDate || s.date; rcEnd = s.endDate || s.date; rcCurrentDate = new Date(rcStart);
                 document.getElementById('s-start').value = s.start; document.getElementById('s-end').value = s.end; 
                 document.getElementById('s-seat').value = s.seat || ''; document.getElementById('s-hotel').value = s.hotel || '';
+                
+                if (s.category) {
+                    const r = document.querySelector(`input[name="s-cat"][value="${s.category}"]`);
+                    if (r) r.checked = true;
+                } else {
+                    document.getElementById('s-cat-biz').checked = true;
+                }
+
                 delBtn.style.display = 'block';
             } else {
                 window.isGeneralPlan = false;
@@ -2068,6 +2097,9 @@
                 const targetD = currentTripDate || window.selectedDashDate || formatYMD(new Date());
                 rcStart = targetD; rcEnd = targetD; rcCurrentDate = new Date(targetD);
                 document.getElementById('s-seat').value = ''; document.getElementById('s-hotel').value = '';
+                
+                document.getElementById('s-cat-biz').checked = true;
+                
                 delBtn.style.display = 'none';
             }
             renderRangeCalendar();
