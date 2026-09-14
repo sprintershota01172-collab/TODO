@@ -250,7 +250,7 @@
             background: var(--bg-surface);
             display: flex; flex-direction: column; align-items: stretch;
             cursor: pointer; transition: all 0.2s var(--ease-ios);
-            min-height: 60px; /* ここを70pxから60pxに変更して高さを調整 */
+            min-height: 60px;
             padding-bottom: 2px;
         }
         .mc-cell:active { background: var(--bg-subtle) !important; }
@@ -367,7 +367,7 @@
         
         .modal-content {
             background: var(--bg-surface); width: 100%; max-width: 380px; 
-            border-radius: 24px; padding: 16px; /* スリム化 */
+            border-radius: 24px; padding: 16px; 
             transform: scale(0.95) translateY(10px); opacity: 0; transition: all 0.4s var(--ease-ios); 
             box-shadow: var(--shadow-float); box-sizing: border-box; max-height: 90vh; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none;
         }
@@ -471,14 +471,12 @@
                     </button>
                 </div>
                 
-                <!-- 修正箇所: カレンダーとスケジュールリストをまとめてスクロールさせるコンテナ -->
                 <div style="flex:1; display:flex; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling: touch;">
                     <div id="monthlyCalendar" style="padding: 0 12px 4px; flex-shrink:0;"></div>
                     
                     <div style="padding: 8px 16px; font-size:10px; font-weight:800; color:var(--text-sub); letter-spacing:0.1em; border-top:1px solid var(--border-light); background:var(--bg-subtle); position:sticky; top:0; z-index:10; flex-shrink:0;">
                         SCHEDULE
                     </div>
-                    <!-- 修正箇所: リスト領域に最小高さを設け、潰れないように修正 -->
                     <div id="monthlyDayList" style="flex:1; padding: 12px 16px; background:var(--bg-subtle); flex-shrink:0; min-height:150px;"></div>
                 </div>
             </div>
@@ -1151,7 +1149,6 @@
             return match ? match[1] : defaultColor;
         }
 
-        // カレンダー表示用 (スケジュールのみ取得)
         function getCalendarEvents() {
             const events = [];
             tripScheds.forEach(s => {
@@ -1200,7 +1197,6 @@
             const todayStr = formatYMD(new Date());
             const allEvents = getCalendarEvents();
             
-            // イベント表示用のスロット計算を含めた週ごとの描画
             let bodyHtml = '';
             for (let i = 0; i < dates.length; i += 7) {
                 const week = dates.slice(i, i + 7);
@@ -1224,6 +1220,9 @@
                 
                 const maxSlot = Math.max(2, slots.length); 
 
+                bodyHtml += '<div style="position:relative;">';
+                
+                // --- 背景・セル描画 ---
                 bodyHtml += '<div class="mc-grid">';
                 week.forEach((dObj, dIdx) => {
                     const dStr = dObj.dStr;
@@ -1233,30 +1232,59 @@
                     if (dStr === window.selectedDashDate) classes += ' selected';
 
                     let evHtml = '';
+                    // プレースホルダーとしてイベント数分の高さを確保
                     for(let s=0; s<maxSlot; s++) {
-                        const ev = wEvents.find(e => e.tempSlot === s && e.startStr <= dStr && e.endStr >= dStr);
-                        if (ev) {
-                            const isStart = ev.startStr === dStr || dIdx === 0;
-                            const isEnd = ev.endStr === dStr || dIdx === 6;
-                            
-                            let br = '0'; let m = '1px 0';
-                            if (isStart && isEnd) { br = '4px'; m = '1px 4px'; }
-                            else if (isStart) { br = '4px 0 0 4px'; m = '1px 0 1px 4px'; }
-                            else if (isEnd) { br = '0 4px 4px 0'; m = '1px 4px 1px 0'; }
-                            
-                            const txt = isStart ? `<span style="padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${ev.name}</span>` : '';
-                            evHtml += `<div class="mc-event-bar" style="background:${ev.color}; border-radius:${br}; margin:${m};" onclick="event.stopPropagation(); openSchedModal('${ev.id}')">${txt}</div>`;
-                        } else {
-                            evHtml += `<div class="mc-event-empty"></div>`;
-                        }
+                        evHtml += `<div class="mc-event-empty" style="margin: 1px 0;"></div>`;
                     }
                     
                     bodyHtml += `<div class="${classes}" onclick="selectCalDate('${dStr}')">
                         <div class="mc-day-num">${dObj.day}</div>
-                        <div class="mc-event-container">${evHtml}</div>
+                        <div class="mc-event-container" style="opacity:0; pointer-events:none;">${evHtml}</div>
                     </div>`;
                 });
                 bodyHtml += '</div>';
+
+                // --- イベントオーバーレイ描画 ---
+                bodyHtml += `<div style="position:absolute; top:26px; left:0; right:0; bottom:0; pointer-events:none; z-index:10; display:flex; flex-direction:column; gap:1px; padding: 1px 0;">`;
+                for (let s = 0; s < maxSlot; s++) {
+                    const slotEvents = wEvents.filter(e => e.tempSlot === s).sort((a,b) => a.startStr.localeCompare(b.startStr));
+                    
+                    bodyHtml += `<div style="display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; height: 16px;">`;
+                    
+                    let colIdx = 0;
+                    slotEvents.forEach(ev => {
+                        let startIdx = week.findIndex(d => d.dStr === ev.startStr);
+                        let endIdx = week.findIndex(d => d.dStr === ev.endStr);
+                        if (startIdx === -1) startIdx = 0;
+                        if (endIdx === -1) endIdx = 6;
+                        
+                        if (startIdx > colIdx) {
+                            bodyHtml += `<div style="grid-column: span ${startIdx - colIdx};"></div>`;
+                        }
+                        
+                        const spanDays = endIdx - startIdx + 1;
+                        const isActualStart = ev.startStr >= wStart;
+                        const isActualEnd = ev.endStr <= wEnd;
+                        
+                        let br = '0';
+                        let margin = '1px 0';
+                        let padding = '0 4px';
+                        if (isActualStart && isActualEnd) { br = '4px'; margin = '1px 4px'; }
+                        else if (isActualStart) { br = '4px 0 0 4px'; margin = '1px 0 1px 4px'; }
+                        else if (isActualEnd) { br = '0 4px 4px 0'; margin = '1px 4px 1px 0'; }
+                        
+                        // min-width:0 を設定しグリッド内でのテキストオーバーフローに正しくellipsisがかかるようにする
+                        bodyHtml += `<div style="grid-column: span ${spanDays}; pointer-events:auto; display:flex; align-items:center; min-width:0;">
+                            <div class="mc-event-bar" style="background:${ev.color}; border-radius:${br}; margin:${margin}; padding:${padding}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; box-sizing:border-box;" onclick="event.stopPropagation(); openSchedModal('${ev.id}')">${ev.name}</div>
+                        </div>`;
+                        
+                        colIdx = endIdx + 1;
+                    });
+                    
+                    bodyHtml += `</div>`; // end row
+                }
+                bodyHtml += `</div>`; // end layer
+                bodyHtml += `</div>`; // end week wrapper
             }
             
             html += bodyHtml + '</div>';
